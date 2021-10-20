@@ -1,5 +1,5 @@
 /**
- * Set the element as 'undefined', so that deleteMarked() will delete it from the array.
+ * Set the element as 'undefined', so that deleteMarked() will delete it from the
  * @param {Array} array any array
  * @param {int} index index of an element of the array
  */

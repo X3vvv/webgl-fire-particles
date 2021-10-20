@@ -301,7 +301,7 @@
     function timing() {
       currentTime = time();
       frameTime = frameTime * 0.9 + (currentTime - lastTime) * 0.1; // ?? magic numbers...
-      fps = MSEC_PER_SEC / frameTime;
+      fps = 1000.0 / frameTime; // in seconds
       // update fps number after 'FPS_REFRESH_INTERVAL' ms
       if (currentTime - lastFPSDivUpdate > FPS_REFRESH_INTERVAL) {
         document.getElementById("fps").innerHTML = "FPS: " + Math.round(fps);
@@ -368,8 +368,7 @@
 
     // calculate new positions for all the particles
     function logic() {
-      const MSEC_PER_SEC = 1000.0,
-        MAX_TIME_INTERVAL = 100;
+      var MAX_TIME_INTERVAL = 100;
       var currentParticleTime = time(); // ms
       var timeDifference = currentParticleTime - lastParticleTime; // ms
 
@@ -381,7 +380,7 @@
       //////////////////////////////////
       // update fire particles
       //////////////////////////////////
-      fireParticleDiscrepancy += options.fireEmitRate * timeDifference / MSEC_PER_SEC;
+      fireParticleDiscrepancy += options.fireEmitRate * timeDifference / 1000.0; // in seconds
       while (fireParticleDiscrepancy > 1) { // same as Σ(fire particle number) > 1
         createFireParticle({ x: canvas.width / 2, y: canvas.height / 2 + 200 });
         fireParticleDiscrepancy -= 1.0;
@@ -407,7 +406,7 @@
             fireParticles[i].vel = addVecs(fireParticles[i].vel, scaleVec(unitVec((noise.simplex3(x / 500, y / 500, lastParticleTime * options.windTurbulance) + 1.0) * Math.PI * 0.5), options.windStrength));
         }
         // update particle positions
-        fireParticles[i].pos = addVecs(fireParticles[i].pos, scaleVec(fireParticles[i].vel, timeDifference / MSEC_PER_SEC));
+        fireParticles[i].pos = addVecs(fireParticles[i].pos, scaleVec(fireParticles[i].vel, timeDifference / 1000.0));
 
         //var offAngle = angleBetweenVecs(fireParticles[i].vel,subVecs(particleAverage,));
         //console.log(offAngle);
@@ -421,7 +420,7 @@
       //////////////////////////////////
       // update spark particles
       //////////////////////////////////
-      sparkParticleDiscrepancy += options.sparkEmitRate * (timeDifference) / MSEC_PER_SEC;
+      sparkParticleDiscrepancy += options.sparkEmitRate * (timeDifference) / 1000.0;
       while (sparkParticleDiscrepancy > 0) {
         createSparkParticle({ x: canvas.width / 2, y: canvas.height / 2 + 200 });
         sparkParticleDiscrepancy -= 1.0;
@@ -431,7 +430,7 @@
         var x = sparkParticles[i].pos.x;
         var y = sparkParticles[i].pos.y;
         sparkParticles[i].vel = addVecs(sparkParticles[i].vel, scaleVec(unitVec((noise.simplex3(x / 500, y / 500, lastParticleTime * 0.0003) + 1.0) * Math.PI * 0.5), 20.0));
-        sparkParticles[i].pos = addVecs(sparkParticles[i].pos, scaleVec(sparkParticles[i].vel, timeDifference / MSEC_PER_SEC));
+        sparkParticles[i].pos = addVecs(sparkParticles[i].pos, scaleVec(sparkParticles[i].vel, timeDifference / 1000.0));
         sparkParticles[i].color.a -= options.sparkDeathSpeed;
 
         if (sparkParticles[i].pos.y <= -sparkParticles[i].size.height * 2 || sparkParticles[i].color.a <= 0)
