@@ -301,7 +301,7 @@
     function timing() {
       currentTime = time();
       frameTime = frameTime * 0.9 + (currentTime - lastTime) * 0.1; // ?? magic numbers...
-      fps = 1000.0 / frameTime;
+      fps = MSEC_PER_SEC / frameTime;
       // update fps number after 'FPS_REFRESH_INTERVAL' ms
       if (currentTime - lastFPSDivUpdate > FPS_REFRESH_INTERVAL) {
         document.getElementById("fps").innerHTML = "FPS: " + Math.round(fps);
@@ -313,23 +313,29 @@
     //////////////////////////////////////////////
     /// Create Particles
     //////////////////////////////////////////////
-    fireParticles = [];
-    sparkParticles = [];
+    noise.seed(time()); // set seed for perlin noise
+
+    fireParticles = []; // fire particle list
+    sparkParticles = []; // spark particle list
 
     function createFireParticle(emitCenter) {
-      var size = randomSpread(options.fireSize, options.fireSize * (options.fireSizeVariance / 100.0));
-      var speed = randomSpread(options.fireSpeed, options.fireSpeed * options.fireSpeedVariance / 100.0);
+      var size = randomSpread(options.fireSize, options.fireSize * (options.fireSizeVariance / 100.0)); // random size
+      var speed = randomSpread(options.fireSpeed, options.fireSpeed * options.fireSpeedVariance / 100.0); // random speed
       var color = {};
+
+      // color the fire
       if (!options.fireTextureColorize)
+        // if dont set fire's color, default White
         color = { r: 1.0, g: 1.0, b: 1.0, a: 0.5 };
       else {
         var hue = randomSpread(options.fireTextureHue, options.fireTextureHueVariance);
         color = HSVtoRGB(convertHue(hue), 1.0, 1.0);
         color.a = 0.5;
       }
+
       var particle = {
-        pos: random2DVec(emitCenter, options.fireEmitPositionSpread),
-        vel: scaleVec(randomUnitVec(Math.PI / 2, options.fireEmitAngleVariance), speed),
+        pos: random2DVec(emitCenter, options.fireEmitPositionSpread), // a random vector(x, y)
+        vel: scaleVec(randomUnitVec(Math.PI / 2, options.fireEmitAngleVariance), speed), // related to EmitAngle?
         size: {
           width: size,
           height: size
@@ -341,7 +347,7 @@
 
     function createSparkParticle(emitCenter) {
       var size = randomSpread(options.sparkSize, options.sparkSize * (options.sparkSizeVariance / 100.0));
-      var origin = clone2DVec(emitCenter);
+      var origin = clone2DVec(emitCenter); // same as origin = emitCenter
       var speed = randomSpread(options.sparkSpeed, options.sparkSpeed * options.sparkSpeedVariance / 100.0);
       var particle = {
         origin: origin,
@@ -356,34 +362,37 @@
       sparkParticles.push(particle);
     }
 
-    var particleDiscrepancy = 0;
+    var fireParticleDiscrepancy = 0; // # of fire particles ready to emit
+    var sparkParticleDiscrepancy = 0; // # of spark particles ready to emit
     var lastParticleTime = time();
-
-    var sparkParticleDiscrepancy = 0;
-
-    noise.seed(Math.random());
 
     // calculate new positions for all the particles
     function logic() {
-      var currentParticleTime = time();
-      var timeDifference = currentParticleTime - lastParticleTime;
+      const MSEC_PER_SEC = 1000.0,
+        MAX_TIME_INTERVAL = 100;
+      var currentParticleTime = time(); // ms
+      var timeDifference = currentParticleTime - lastParticleTime; // ms
 
-      // we don't want to generate a ton of particles if the browser was minimized or something
-      if (timeDifference > 100)
-        timeDifference = 100;
+      // when toggling/minimize/... screen, refresh rate of the program goes down,
+      // which leads to a majority of particles generated simultaneously
+      if (timeDifference > MAX_TIME_INTERVAL)
+        timeDifference = MAX_TIME_INTERVAL;
 
+      //////////////////////////////////
       // update fire particles
-      particleDiscrepancy += options.fireEmitRate * (timeDifference) / 1000.0;
-      while (particleDiscrepancy > 0) {
+      //////////////////////////////////
+      fireParticleDiscrepancy += options.fireEmitRate * timeDifference / MSEC_PER_SEC;
+      while (fireParticleDiscrepancy > 1) { // same as Σ(fire particle number) > 1
         createFireParticle({ x: canvas.width / 2, y: canvas.height / 2 + 200 });
-        particleDiscrepancy -= 1.0;
+        fireParticleDiscrepancy -= 1.0;
       }
 
+      // get the average center of all particles in 'fireParticles' list
       particleAverage = { x: 0, y: 0 };
-      var numParts = fireParticles.length;
-      for (var i = 0; i < numParts; i++) {
-        particleAverage.x += fireParticles[i].pos.x / numParts;
-        particleAverage.y += fireParticles[i].pos.y / numParts;
+      var fireParticleNum = fireParticles.length;
+      for (var i = 0; i < fireParticleNum; i++) {
+        particleAverage.x += fireParticles[i].pos.x / fireParticleNum;
+        particleAverage.y += fireParticles[i].pos.y / fireParticleNum;
       }
 
       for (var i = 0; i < fireParticles.length; i++) {
@@ -392,13 +401,13 @@
 
         // apply wind to the velocity
         if (options.wind) {
-          if (options.omnidirectionalWind)
+          if (options.omnidirectionalWind) // wind could blow from upside
             fireParticles[i].vel = addVecs(fireParticles[i].vel, scaleVec(unitVec((noise.simplex3(x / 500, y / 500, lastParticleTime * options.windTurbulance) + 1.0) * Math.PI), options.windStrength));
           else
             fireParticles[i].vel = addVecs(fireParticles[i].vel, scaleVec(unitVec((noise.simplex3(x / 500, y / 500, lastParticleTime * options.windTurbulance) + 1.0) * Math.PI * 0.5), options.windStrength));
         }
-        // move the particle
-        fireParticles[i].pos = addVecs(fireParticles[i].pos, scaleVec(fireParticles[i].vel, timeDifference / 1000.0));
+        // update particle positions
+        fireParticles[i].pos = addVecs(fireParticles[i].pos, scaleVec(fireParticles[i].vel, timeDifference / MSEC_PER_SEC));
 
         //var offAngle = angleBetweenVecs(fireParticles[i].vel,subVecs(particleAverage,));
         //console.log(offAngle);
@@ -409,8 +418,10 @@
       }
       fireParticles = deleteMarked(fireParticles);
 
+      //////////////////////////////////
       // update spark particles
-      sparkParticleDiscrepancy += options.sparkEmitRate * (timeDifference) / 1000.0;
+      //////////////////////////////////
+      sparkParticleDiscrepancy += options.sparkEmitRate * (timeDifference) / MSEC_PER_SEC;
       while (sparkParticleDiscrepancy > 0) {
         createSparkParticle({ x: canvas.width / 2, y: canvas.height / 2 + 200 });
         sparkParticleDiscrepancy -= 1.0;
@@ -420,7 +431,7 @@
         var x = sparkParticles[i].pos.x;
         var y = sparkParticles[i].pos.y;
         sparkParticles[i].vel = addVecs(sparkParticles[i].vel, scaleVec(unitVec((noise.simplex3(x / 500, y / 500, lastParticleTime * 0.0003) + 1.0) * Math.PI * 0.5), 20.0));
-        sparkParticles[i].pos = addVecs(sparkParticles[i].pos, scaleVec(sparkParticles[i].vel, timeDifference / 1000.0));
+        sparkParticles[i].pos = addVecs(sparkParticles[i].pos, scaleVec(sparkParticles[i].vel, timeDifference / MSEC_PER_SEC));
         sparkParticles[i].color.a -= options.sparkDeathSpeed;
 
         if (sparkParticles[i].pos.y <= -sparkParticles[i].size.height * 2 || sparkParticles[i].color.a <= 0)
@@ -428,8 +439,9 @@
       }
       sparkParticles = deleteMarked(sparkParticles);
 
+      // show the particle number in the webpage
       document.getElementById("numParticles").innerHTML = "# particles: " + (fireParticles.length + sparkParticles.length);
-
+      // reset particle generating timer
       lastParticleTime = currentParticleTime;
     }
 
@@ -450,6 +462,7 @@
     rects = [];
 
     function concat_inplace(index, arr1, arr2) {
+      // append 'arr2' to 'arr1' from index indicated by 'index'
       for (var i = 0; i < arr2.length; i++) {
         arr1[index] = arr2[i];
         index += 1;

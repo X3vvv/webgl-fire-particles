@@ -1,7 +1,17 @@
+/**
+ * Set the element as 'undefined', so that deleteMarked() will delete it from the array.
+ * @param {Array} array any array
+ * @param {int} index index of an element of the array
+ */
 function markForDeletion(array, index) {
   array[index] = undefined;
 }
 
+/**
+ * Clean array by deleting all 'undefined' elements.
+ * @param {Array} array any array
+ * @returns cleaned array
+ */
 function deleteMarked(array) {
   var newIndex = 0;
   for (var i = 0; i < array.length; i++) {
